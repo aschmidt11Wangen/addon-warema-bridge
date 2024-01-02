@@ -159,6 +159,7 @@ function callback(err, msg) {
         if (registered_shades.includes(msg.payload.weather.snr)) {
           client.publish('warema/' + msg.payload.weather.snr + '/illuminance/state', msg.payload.weather.lumen.toString(), {retain: true})
           client.publish('warema/' + msg.payload.weather.snr + '/temperature/state', msg.payload.weather.temp.toString(), {retain: true})
+          client.publish('warema/' + msg.payload.weather.snr + '/wind_speed/state', msg.payload.weather.wind.toString(), {retain: true})
         } else {
           var availability_topic = 'warema/' + msg.payload.weather.snr + '/availability'
           var payload = {
@@ -193,6 +194,15 @@ function callback(err, msg) {
             unit_of_measurement: '°C',
           }
           client.publish('homeassistant/sensor/' + msg.payload.weather.snr + '/temperature/config', JSON.stringify(temperature_payload), {retain: true})
+
+          var wind_payload = {
+            ...payload,
+            state_topic: 'warema/' + msg.payload.weather.snr + '/wind_speed/state',
+            device_class: 'wind_speed',
+            unique_id: msg.payload.weather.snr + '_wind_speed',
+            unit_of_measurement: 'm/s',
+          }
+          client.publish('homeassistant/sensor/' + msg.payload.weather.snr + '/wind/config', JSON.stringify(wind_payload), {retain: true})
 
           client.publish(availability_topic, 'online', {retain: true})
           registered_shades += msg.payload.weather.snr
