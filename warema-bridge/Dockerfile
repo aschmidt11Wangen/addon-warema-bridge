@@ -1,4 +1,4 @@
-ARG BUILD_FROM=alpine:3.18.5
+ARG BUILD_FROM=alpine:3.18.6
 FROM ${BUILD_FROM}
 
 # Setup base
