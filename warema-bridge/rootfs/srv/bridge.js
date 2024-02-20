@@ -1,5 +1,5 @@
 const warema = require('warema-wms-venetian-blinds');
-var mqtt = require('mqtt')
+const mqtt = require('mqtt')
 
 process.on('SIGINT', function() {
     process.exit(0);
@@ -53,7 +53,7 @@ function registerDevice(element) {
           model: model
         }
       }
-      break
+      break;
     // WMS WebControl Pro - while part of the network, we have no business to do with it.
     case 9:
       return
@@ -77,7 +77,7 @@ function registerDevice(element) {
         tilt_min: 100,
         tilt_max: -100,
       }
-      break
+      break;
     case 21:
       model = 'Actuator UP'
       payload = {
@@ -98,7 +98,7 @@ function registerDevice(element) {
         tilt_min: 100,
         tilt_max: -100,
       }
-      break
+      break;
     case 25:
       model = 'Vertical awning'
       payload = {
@@ -113,7 +113,7 @@ function registerDevice(element) {
         position_topic: 'warema/' + snr + '/position',
         set_position_topic: 'warema/' + snr + '/set_position',
       }
-      break
+      break;
     default:
       console.log('Unrecognized device type: ' + element.type)
       model = 'Unknown model ' + element.type
@@ -154,7 +154,7 @@ function callback(err, msg) {
         registerDevices()
         stickUsb.setPosUpdInterval(10000);
         stickUsb.setWatchMovingBlindsInterval(1000)
-        break
+        break;
       case 'wms-vb-rcv-weather-broadcast':
         if (registered_shades.includes(msg.payload.weather.snr)) {
           client.publish('warema/' + msg.payload.weather.snr + '/illuminance/state', msg.payload.weather.lumen.toString(), {retain: true})
@@ -207,7 +207,7 @@ function callback(err, msg) {
           client.publish(availability_topic, 'online', {retain: true})
           registered_shades += msg.payload.weather.snr
         }
-        break
+        break;
       case 'wms-vb-blind-position-update':
         client.publish('warema/' + msg.payload.snr + '/position', msg.payload.position.toString(), {retain: true})
         client.publish('warema/' + msg.payload.snr + '/tilt', msg.payload.angle.toString(), {retain: true})
@@ -215,19 +215,21 @@ function callback(err, msg) {
           position: msg.payload.position,
           angle: msg.payload.angle
         }
-        break
+        break;
       case 'wms-vb-scanned-devices':
         console.log('Scanned devices.')
         msg.payload.devices.forEach(element => registerDevice(element))
         console.log(stickUsb.vnBlindsList())
-        break
+        break;
       default:
         console.log('UNKNOWN MESSAGE: ' + JSON.stringify(msg));
     }
   }
 }
 
-var client = mqtt.connect(
+var stickUsb = null
+
+const client = mqtt.connect(
   process.env.MQTT_SERVER,
   {
     username: process.env.MQTT_USER,
@@ -239,8 +241,6 @@ var client = mqtt.connect(
     }
   }
 )
-
-var stickUsb
 
 client.on('connect', function (connack) {
   console.log('Connected to MQTT')
@@ -262,8 +262,11 @@ client.on('error', function (error) {
   console.log('MQTT Error: ' + error.toString())
 })
 
+client.on('reconnect', () => {
+  console.log('Reconnecting to MQTT');
+});
+
 client.on('message', function (topic, message) {
-  // console.log(topic + ':' + message.toString())
   var scope = topic.split('/')[0]
   if (scope == 'warema') {
     var device = parseInt(topic.split('/')[1])
@@ -272,28 +275,38 @@ client.on('message', function (topic, message) {
       case 'set':
         switch (message.toString()) {
           case 'CLOSE':
+            console.log('Sending CLOSE command to device: ' + device)
             stickUsb.vnBlindSetPosition(device, 100, 100)
             break;
           case 'OPEN':
+            console.log('Sending OPEN command to device: ' + device)
             stickUsb.vnBlindSetPosition(device, 0, -100)
             break;
           case 'STOP':
+            console.log('Sending STOP command to device: ' + device)
             stickUsb.vnBlindStop(device)
             break;
         }
-        break
+        break;
       case 'set_position':
+        console.log('Sending set_position to "' + message + '" command to device:' + device)
         stickUsb.vnBlindSetPosition(device, parseInt(message), parseInt(shade_position[device]['angle']))
-        break
+        break;
       case 'set_tilt':
+        console.log('Sending set_tilt to "' + message + '" command to device:' + device)
         stickUsb.vnBlindSetPosition(device, parseInt(shade_position[device]['position']), parseInt(message))
-        break
-      //default:
-      //  console.log('Unrecognised command from HA')
+        break;
     }
   } else if (scope == 'homeassistant') {
-    if (topic.split('/')[1] == 'status' && message.toString() == 'online') {
-      registerDevices()
+    if (topic.split('/')[1] == 'status') {
+      switch (message.toString()) {
+        case 'online':
+          console.log('HA is online now')
+          registerDevices()
+          break;
+        default:
+          console.log('HA is ' + message.toString() +' now')
+      }
     }
   }
 })
