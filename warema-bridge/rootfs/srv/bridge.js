@@ -1,10 +1,19 @@
 const warema = require('warema-wms-venetian-blinds');
 const mqtt = require('mqtt')
 
+originalLog = console.log;
+console.log = function () {
+    var args = [].slice.call(arguments);
+    originalLog.apply(console.log,[getCurrentDateString()].concat(args));
+};
+
+function getCurrentDateString() {
+    return (new Date()).toISOString() + ':';
+};
+
 process.on('SIGINT', function() {
     process.exit(0);
 });
-
 
 const ignoredDevices = process.env.IGNORED_DEVICES ? process.env.IGNORED_DEVICES.split(',') : []
 const forceDevices = process.env.FORCE_DEVICES ? process.env.FORCE_DEVICES.split(',') : []
