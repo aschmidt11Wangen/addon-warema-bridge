@@ -26,7 +26,7 @@ const settingsPar = {
   };
 
 var registered_shades = []
-var shade_position = []
+var shade_position = {}
 
 function registerDevice(element) {
   snr = String(element.snr).replace(/^0+/, '')
@@ -130,15 +130,17 @@ function registerDevice(element) {
   }
 
   if (ignoredDevices.includes(element.snr.toString())) {
-    console.log('Ignoring and removing device ' + snr + ' (type ' + element.type + ')')
+    console.log('Ignoring device ' + snr + ' (type ' + element.type + ')')
   } else {
-    console.log('Adding device ' + snr + ' (type ' + element.type + ')')
-
-    stickUsb.vnBlindAdd(parseInt(element.snr), element.snr.toString());
-    registered_shades += snr
+    if (!registered_shades.includes(snr)) {
+      console.log('Adding device ' + snr + ' (type ' + element.type + ') to warema stick')
+      stickUsb.vnBlindAdd(parseInt(element.snr), element.snr.toString());
+      registered_shades.push(snr)
+    }
+    console.log('Publishing state of device ' + snr + ' (type ' + element.type + ') to Home Assistant')
     client.publish(availability_topic, 'online', {retain: true})
+    client.publish(topic, JSON.stringify(payload), {retain: true})
   }
-  client.publish(topic, JSON.stringify(payload), {retain: true})
 }
 
 function registerDevices() {
@@ -214,7 +216,7 @@ function callback(err, msg) {
           client.publish('homeassistant/sensor/' + msg.payload.weather.snr + '/wind/config', JSON.stringify(wind_payload), {retain: true})
 
           client.publish(availability_topic, 'online', {retain: true})
-          registered_shades += msg.payload.weather.snr
+          registered_shades.push(msg.payload.weather.snr)
         }
         break;
       case 'wms-vb-blind-position-update':
@@ -310,11 +312,11 @@ client.on('message', function (topic, message) {
     if (topic.split('/')[1] == 'status') {
       switch (message.toString()) {
         case 'online':
-          console.log('HA is online now')
+          console.log('Home Assistant is online now')
           registerDevices()
           break;
         default:
-          console.log('HA is ' + message.toString() +' now')
+          console.log('Home Assistant is ' + message.toString() +' now')
       }
     }
   }
