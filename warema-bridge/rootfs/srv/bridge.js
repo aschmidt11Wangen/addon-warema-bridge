@@ -1,4 +1,4 @@
-const warema = require('warema-wms-venetian-blinds');
+const warema = require('./warema-wms-venetian-blinds');
 const mqtt = require('mqtt')
 
 originalLog = console.log;

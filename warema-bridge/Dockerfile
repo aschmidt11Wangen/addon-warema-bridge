@@ -10,8 +10,8 @@ COPY rootfs/srv /srv
 WORKDIR /srv
 
 RUN apk add --no-cache --virtual .build-deps python3 make g++ linux-headers \
-    && npm ci --only=production \
+    && npm ci --only=production && npm rebuild --build-from-source\
     && apk del --no-cache --purge .build-deps \
     && rm -rf /root/.npm /root/.cache
 
-ENTRYPOINT ["/usr/bin/node", "/srv/bridge.js"]
+ENTRYPOINT ["node", "/srv/bridge.js"]
