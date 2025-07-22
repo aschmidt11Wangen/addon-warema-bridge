@@ -3,9 +3,10 @@
 # Warema Bridge initialization script
 bashio::log.info "Initializing Warema Bridge add-on..."
 
-# Check if config exists
-if ! bashio::config.exists; then
-    bashio::log.warning "No configuration found, using defaults"
-fi
+# Simple initialization without config checks that might fail
+bashio::log.info "Setting up Warema Bridge environment..."
 
-bashio::log.info "Warema Bridge initialization completed"
+# Ensure the service directory exists
+mkdir -p /srv
+
+bashio::log.info "Warema Bridge initialization completed successfully"
