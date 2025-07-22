@@ -16,6 +16,18 @@
     "serial_device": "str",
     "baud_rate": "int"
   },
+  "uiSchema": {
+    "serial_device": {
+      "ui:title": "Serial Device",
+      "ui:description": "Path to the Warema WMS USB device (e.g., /dev/ttyUSB0)",
+      "ui:placeholder": "/dev/ttyUSB0"
+    },
+    "baud_rate": {
+      "ui:title": "Baud Rate", 
+      "ui:description": "Serial communication speed (typically 38400 for Warema WMS)",
+      "ui:placeholder": "38400"
+    }
+  },
   "uart": true,
   "usb": true,
   "image": "ghcr.io/aschmidt11wangen/addon-warema-bridge"
