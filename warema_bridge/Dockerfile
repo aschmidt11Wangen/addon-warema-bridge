@@ -19,5 +19,6 @@ RUN npm cache clean --force
 RUN npm install --production --no-optional --ignore-scripts
 RUN npm rebuild
 
-# Set executable permissions
+# Set executable permissions for s6-overlay scripts
+RUN chmod +x /etc/cont-init.d/00-warema-config.sh
 RUN chmod +x /etc/s6-overlay/s6-rc.d/warema-bridge/run
