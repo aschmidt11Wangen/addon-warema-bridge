@@ -1,6 +1,6 @@
 {
   "name": "Warema Bridge",
-  "version": "5.0.0-complete",
+  "version": "5.0.1-complete",
   "slug": "warema_bridge",
   "description": "Complete bridge for Warema WMS venetian blinds to Home Assistant via MQTT",
   "icon": "mdi:window-shutter",

@@ -36,6 +36,7 @@ jobs:
           context: ./warema_bridge
           platforms: linux/amd64,linux/aarch64,linux/armv7,linux/armhf
           push: true
+          no-cache: true
           build-args: |
             BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.19
           tags: |
