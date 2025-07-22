@@ -1,0 +1,15 @@
+{
+  "name": "warema-bridge",
+  "version": "5.0.0-complete",
+  "description": "Complete bridge for Warema WMS venetian blinds to Home Assistant",
+  "main": "bridge.js",
+  "scripts": {
+    "start": "node bridge.js"
+  },
+  "dependencies": {
+    "mqtt": "^4.3.7",
+    "warema-wms-venetian-blinds": "^1.2.1"
+  },
+  "author": "aschmidt11Wangen",
+  "license": "MIT"
+}
