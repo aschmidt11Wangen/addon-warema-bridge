@@ -228,14 +228,36 @@ function handleMQTTMessage(topic, message) {
 
 // Initialize Warema WMS
 function initializeWarema() {
-    console.log('� Initializing Warema WMS connection...')
+    console.log('🔌 Initializing Warema WMS connection...')
     
     try {
-        wms = new warema.WmsController({
-            // Add your WMS configuration here
+        // Read configuration from Home Assistant add-on options
+        let config = {}
+        try {
+            const fs = require('fs')
+            const optionsFile = process.env.HASSIO_OPTIONS || '/data/options.json'
+            if (fs.existsSync(optionsFile)) {
+                const optionsData = fs.readFileSync(optionsFile, 'utf8')
+                config = JSON.parse(optionsData)
+                console.log('📋 Loaded configuration:', JSON.stringify(config, null, 2))
+            } else {
+                console.log('⚠️  No options file found, using defaults')
+            }
+        } catch (e) {
+            console.log('⚠️  Could not read configuration:', e.message)
+        }
+        
+        // WMS Configuration
+        const wmsConfig = {
+            device: config.serial_device || '/dev/ttyUSB0',
+            baudRate: config.baud_rate || 38400,
             timeout: 10000,
             retries: 3
-        })
+        }
+        
+        console.log('🔧 WMS Configuration:', JSON.stringify(wmsConfig, null, 2))
+        
+        wms = new warema.WmsController(wmsConfig)
         
         wms.on('error', (error) => {
             console.error('❌ Warema WMS error:', error.message)
@@ -253,7 +275,7 @@ function initializeWarema() {
         })
         
         wms.on('positionUpdate', (deviceId, position) => {
-            console.log(`� Device ${deviceId} position update: ${position}%`)
+            console.log(`📍 Device ${deviceId} position update: ${position}%`)
             client.publish(`warema/cover/${deviceId}/position`, position.toString(), {retain: true})
         })
         
@@ -263,10 +285,11 @@ function initializeWarema() {
         })
         
         wms.on('disconnected', () => {
-            console.log('� Disconnected from Warema WMS network')
+            console.log('🔌 Disconnected from Warema WMS network')
         })
         
         // Start WMS connection
+        console.log(`🚀 Connecting to WMS on ${wmsConfig.device} at ${wmsConfig.baudRate} baud...`)
         wms.connect()
         
     } catch (error) {
@@ -277,7 +300,8 @@ function initializeWarema() {
         client.publish('warema/bridge/test', JSON.stringify({
             message: 'Warema Bridge running in test mode - WMS initialization failed',
             timestamp: new Date().toISOString(),
-            version: '5.0.0-complete'
+            version: '5.0.0-complete',
+            error: error.message
         }), {retain: true})
     }
 }

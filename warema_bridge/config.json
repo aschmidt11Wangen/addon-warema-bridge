@@ -8,7 +8,15 @@
   "startup": "system",
   "boot": "auto",
   "init": false,
-  "options": {},
-  "schema": {},
+  "options": {
+    "serial_device": "/dev/ttyUSB0",
+    "baud_rate": 38400
+  },
+  "schema": {
+    "serial_device": "str",
+    "baud_rate": "int"
+  },
+  "uart": true,
+  "usb": true,
   "image": "ghcr.io/aschmidt11wangen/addon-warema-bridge"
 }
