@@ -10,5 +10,5 @@
   "init": false,
   "options": {},
   "schema": {},
-  "image": "ghcr.io/home-assistant/{arch}-base:3.19"
+  "image": "ghcr.io/aschmidt11wangen/addon-warema-bridge"
 }
