@@ -202,22 +202,22 @@ function handleMQTTMessage(topic, message) {
                 switch (msg) {
                     case 'OPEN':
                         console.log(`📤 Opening device ${deviceId}`)
-                        wms.setPosition(deviceId, 100)
+                        wms.vnBlindSetPosition(deviceId, 0, -100) // Fully open
                         break
                     case 'CLOSE':
                         console.log(`📤 Closing device ${deviceId}`)
-                        wms.setPosition(deviceId, 0)
+                        wms.vnBlindSetPosition(deviceId, 100, 100) // Fully closed
                         break
                     case 'STOP':
                         console.log(`📤 Stopping device ${deviceId}`)
-                        wms.stop(deviceId)
+                        wms.vnBlindStop(deviceId)
                         break
                 }
             } else if (command === 'set_position') {
                 const position = parseInt(msg)
                 if (!isNaN(position) && position >= 0 && position <= 100) {
                     console.log(`📤 Setting device ${deviceId} to position ${position}%`)
-                    wms.setPosition(deviceId, position)
+                    wms.vnBlindSetPosition(deviceId, position, 0) // Set position with horizontal slats
                 }
             }
         } catch (error) {
@@ -247,50 +247,95 @@ function initializeWarema() {
             console.log('⚠️  Could not read configuration:', e.message)
         }
         
-        // WMS Configuration
+        // WMS Configuration with network parameters
         const wmsConfig = {
             device: config.serial_device || '/dev/ttyUSB0',
             baudRate: config.baud_rate || 38400,
+            channel: config.wms_channel || 17,
+            panid: config.wms_panid || 'FFFF',
+            key: config.wms_key || '00112233445566778899AABBCCDDEEFF',
             timeout: 10000,
             retries: 3
         }
         
-        console.log('🔧 WMS Configuration:', JSON.stringify(wmsConfig, null, 2))
+        console.log('🔧 WMS Configuration:', JSON.stringify({
+            device: wmsConfig.device,
+            baudRate: wmsConfig.baudRate,
+            channel: wmsConfig.channel,
+            panid: wmsConfig.panid,
+            keyLength: wmsConfig.key.length,
+            hasValidKey: wmsConfig.key.length === 32
+        }, null, 2))
         
-        wms = new warema.WmsController(wmsConfig)
+        // Create WMS controller with proper network parameters
+        wms = new warema.WmsVbStickUsb(
+            wmsConfig.device,
+            wmsConfig.channel,
+            wmsConfig.panid,
+            wmsConfig.key,
+            {}, // options
+            handleWmsCallback
+        )
         
-        wms.on('error', (error) => {
-            console.error('❌ Warema WMS error:', error.message)
-        })
-        
-        wms.on('deviceFound', (device) => {
-            console.log(`🔍 Found Warema device: ${device.id} - ${device.name || 'Unknown'}`)
-            devices.set(device.id, device)
+        function handleWmsCallback(err, msg) {
+            if (err) {
+                console.error('❌ WMS Callback error:', err)
+                return
+            }
             
-            // Publish Home Assistant discovery
-            publishHomeAssistantDiscovery(device)
-            
-            // Publish initial state
-            client.publish(`warema/cover/${device.id}/position`, device.position?.toString() || '50', {retain: true})
-        })
-        
-        wms.on('positionUpdate', (deviceId, position) => {
-            console.log(`📍 Device ${deviceId} position update: ${position}%`)
-            client.publish(`warema/cover/${deviceId}/position`, position.toString(), {retain: true})
-        })
-        
-        wms.on('connected', () => {
-            console.log('✅ Connected to Warema WMS network!')
-            wms.scanDevices()
-        })
-        
-        wms.on('disconnected', () => {
-            console.log('🔌 Disconnected from Warema WMS network')
-        })
-        
-        // Start WMS connection
-        console.log(`🚀 Connecting to WMS on ${wmsConfig.device} at ${wmsConfig.baudRate} baud...`)
-        wms.connect()
+            if (msg && msg.topic) {
+                console.log(`📨 WMS Message: ${msg.topic}`)
+                
+                switch (msg.topic) {
+                    case 'wms-vb-init-completion':
+                        console.log('✅ WMS initialization completed')
+                        if (config.device_ids && config.device_ids.length > 0) {
+                            // Add specific device IDs
+                            config.device_ids.forEach(deviceId => {
+                                const deviceName = `Device ${deviceId}`
+                                wms.addVnBlind(deviceId, deviceName)
+                                console.log(`🎯 Added device: ${deviceId} (${deviceName})`)
+                            })
+                        } else {
+                            // Scan for devices
+                            console.log('🔍 Scanning for WMS devices...')
+                            wms.scanDevices({ autoAssignBlinds: true })
+                        }
+                        break
+                        
+                    case 'wms-vb-scanned-devices':
+                        console.log(`🔍 Found ${msg.payload.devices.length} WMS devices`)
+                        msg.payload.devices.forEach(device => {
+                            console.log(`  - Device ${device.snr} (${device.snrHex}) - ${device.typeStr}`)
+                            const deviceObj = {
+                                id: device.snr,
+                                name: `${device.typeStr.trim()} ${device.snr}`,
+                                type: device.type
+                            }
+                            devices.set(device.snr, deviceObj)
+                            publishHomeAssistantDiscovery(deviceObj)
+                        })
+                        break
+                        
+                    case 'wms-vb-blind-position-update':
+                        const deviceId = msg.payload.snr
+                        console.log(`📍 Device ${deviceId} position: ${msg.payload.position}%, angle: ${msg.payload.angle}%`)
+                        client.publish(`warema/cover/${deviceId}/position`, msg.payload.position.toString(), {retain: true})
+                        break
+                        
+                    case 'wms-vb-deviceFound':
+                        const foundDevice = {
+                            id: msg.payload.snr,
+                            name: msg.payload.name || `Device ${msg.payload.snr}`,
+                            type: msg.payload.type
+                        }
+                        console.log(`� Found device: ${foundDevice.id} - ${foundDevice.name}`)
+                        devices.set(foundDevice.id, foundDevice)
+                        publishHomeAssistantDiscovery(foundDevice)
+                        break
+                }
+            }
+        }
         
     } catch (error) {
         console.error('❌ Failed to initialize Warema WMS:', error.message)

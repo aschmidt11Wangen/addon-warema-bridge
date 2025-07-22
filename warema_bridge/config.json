@@ -10,23 +10,19 @@
   "init": false,
   "options": {
     "serial_device": "/dev/ttyUSB0",
-    "baud_rate": 38400
+    "baud_rate": 38400,
+    "wms_channel": 17,
+    "wms_panid": "",
+    "wms_key": "",
+    "device_ids": []
   },
   "schema": {
     "serial_device": "str",
-    "baud_rate": "int"
-  },
-  "uiSchema": {
-    "serial_device": {
-      "ui:title": "Serial Device",
-      "ui:description": "Path to the Warema WMS USB device (e.g., /dev/ttyUSB0)",
-      "ui:placeholder": "/dev/ttyUSB0"
-    },
-    "baud_rate": {
-      "ui:title": "Baud Rate", 
-      "ui:description": "Serial communication speed (typically 38400 for Warema WMS)",
-      "ui:placeholder": "38400"
-    }
+    "baud_rate": "int",
+    "wms_channel": "int",
+    "wms_panid": "str",
+    "wms_key": "str",
+    "device_ids": ["int?"]
   },
   "uart": true,
   "usb": true,
