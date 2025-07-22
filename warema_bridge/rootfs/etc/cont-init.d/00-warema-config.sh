@@ -1,12 +1,11 @@
-#!/usr/bin/with-contenv bashio
+#!/bin/bash
 
 # Warema Bridge initialization script
-bashio::log.info "Initializing Warema Bridge add-on..."
-
-# Simple initialization without config checks that might fail
-bashio::log.info "Setting up Warema Bridge environment..."
+echo "[INFO] Initializing Warema Bridge add-on..."
 
 # Ensure the service directory exists
 mkdir -p /srv
 
-bashio::log.info "Warema Bridge initialization completed successfully"
+echo "[INFO] Warema Bridge initialization completed successfully"
+
+exit 0
