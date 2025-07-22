@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "mqtt": "^4.3.7",
-    "warema-wms-venetian-blinds": "^1.2.1"
+    "warema-wms-venetian-blinds": "^2.0.5"
   },
   "author": "aschmidt11Wangen",
   "license": "MIT"
