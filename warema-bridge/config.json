@@ -1,0 +1,13 @@
+{
+  "name": "Warema Bridge",
+  "version": "3.0.0-mqtt-auth-fix",
+  "slug": "warema_bridge",
+  "description": "A bridge for Warema devices",
+  "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
+  "startup": "system",
+  "boot": "auto",
+  "init": false,
+  "options": {},
+  "schema": {},
+  "image": "ghcr.io/home-assistant/{arch}-base:3.19"
+}
