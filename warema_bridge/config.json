@@ -3,7 +3,7 @@
   "version": "5.0.0-complete",
   "slug": "warema_bridge",
   "description": "Complete bridge for Warema WMS venetian blinds to Home Assistant via MQTT",
-  "icon": "mdi:bridge",
+  "icon": "mdi:window-shutter",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
   "startup": "system",
   "boot": "auto",
