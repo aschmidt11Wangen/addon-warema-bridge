@@ -1,8 +1,10 @@
+#!/usr/bin/env node
+
 // const warema = require('./warema-wms-venetian-blinds'); // TODO: Re-enable when package works
 const mqtt = require('mqtt')
 
 console.log('🚀 Starting Warema Bridge (MQTT-only mode for testing)...')
-console.log('🔖 VERSION: 3.0.2-enhanced - MQTT WITH CREDENTIALS + ICON + BETTER STRUCTURE')
+console.log('🔖 VERSION: 3.0.3-simple - MINIMAL CONFIG TEST')
 console.log('🔖 BUILD: ' + new Date().toISOString())
 console.log('🔖 IF YOU SEE WAREMA HARDWARE MESSAGES, THE CACHE IS NOT CLEARED!')
 
@@ -115,7 +117,7 @@ async function testMqttConnection() {
     client.publish('warema/test', JSON.stringify({
       message: 'Warema Bridge is running',
       timestamp: new Date().toISOString(),
-      version: '3.0.1-with-icon'
+      version: '3.0.3-simple'
     }), {retain: true})
     
     console.log('🎉 MQTT test successful! Add-on is working correctly.')

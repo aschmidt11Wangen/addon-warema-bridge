@@ -1,16 +1,11 @@
 {
   "name": "Warema Bridge",
-  "version": "3.0.2-enhanced",
+  "version": "3.0.3-simple",
   "slug": "warema_bridge",
   "description": "Bridge for Warema WMS venetian blinds to Home Assistant via MQTT",
-  "url": "https://github.com/aschmidt11Wangen/addon-warema-bridge",
-  "icon": "mdi:bridge",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
-  "startup": "system",
+  "startup": "application",
   "boot": "auto",
-  "init": false,
-  "map": ["config:rw"],
   "options": {},
-  "schema": {},
-  "image": "ghcr.io/home-assistant/{arch}-base:3.19"
+  "schema": {}
 }
