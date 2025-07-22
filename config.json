@@ -1,8 +1,9 @@
 {
   "name": "Warema Bridge",
-  "version": "3.0.0-mqtt-auth-fix",
+  "version": "3.0.1-with-icon",
   "slug": "warema_bridge",
   "description": "A bridge for Warema devices",
+  "icon": "mdi:bridge",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
   "startup": "system",
   "boot": "auto",

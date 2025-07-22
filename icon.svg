@@ -1,0 +1,40 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="128" cy="128" r="120" fill="#1976d2" stroke="#0d47a1" stroke-width="4"/>
+  
+  <!-- Bridge/connection icon -->
+  <g stroke="#ffffff" stroke-width="6" fill="none">
+    <!-- Bridge arches -->
+    <path d="M60 140 Q80 120 100 140" />
+    <path d="M100 140 Q120 120 140 140" />
+    <path d="M140 140 Q160 120 180 140" />
+    
+    <!-- Bridge deck -->
+    <line x1="50" y1="140" x2="190" y2="140" stroke-width="8"/>
+    
+    <!-- Support pillars -->
+    <line x1="80" y1="140" x2="80" y2="160" stroke-width="4"/>
+    <line x1="120" y1="140" x2="120" y2="160" stroke-width="4"/>
+    <line x1="160" y1="140" x2="160" y2="160" stroke-width="4"/>
+  </g>
+  
+  <!-- Blinds/venetian representation -->
+  <g stroke="#ffffff" stroke-width="3" fill="none">
+    <!-- Horizontal slats -->
+    <line x1="70" y1="80" x2="170" y2="80"/>
+    <line x1="70" y1="90" x2="170" y2="90"/>
+    <line x1="70" y1="100" x2="170" y2="100"/>
+    <line x1="70" y1="110" x2="170" y2="110"/>
+    
+    <!-- Control strings -->
+    <line x1="75" y1="75" x2="75" y2="115" stroke-width="2"/>
+    <line x1="165" y1="75" x2="165" y2="115" stroke-width="2"/>
+  </g>
+  
+  <!-- MQTT/WiFi signal -->
+  <g fill="#ffffff">
+    <circle cx="200" cy="80" r="3"/>
+    <path d="M195 75 Q200 70 205 75" fill="none" stroke="#ffffff" stroke-width="2"/>
+    <path d="M190 70 Q200 60 210 70" fill="none" stroke="#ffffff" stroke-width="2"/>
+  </g>
+</svg>
