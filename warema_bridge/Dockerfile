@@ -1,4 +1,5 @@
-FROM ghcr.io/home-assistant/base:3.19
+ARG BUILD_FROM
+FROM $BUILD_FROM
 
 # Install Node.js
 RUN apk add --no-cache nodejs npm
