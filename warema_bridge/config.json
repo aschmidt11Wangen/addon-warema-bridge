@@ -10,19 +10,25 @@
   "init": false,
   "options": {
     "serial_device": "/dev/ttyUSB0",
-    "baud_rate": 38400,
     "wms_channel": 17,
     "wms_panid": "",
     "wms_key": "",
-    "device_ids": []
+    "ignored_devices": "",
+    "force_devices": "",
+    "mqtt_server": "core-mosquitto:1883",
+    "mqtt_user": "",
+    "mqtt_password": ""
   },
   "schema": {
     "serial_device": "str",
-    "baud_rate": "int",
     "wms_channel": "int",
     "wms_panid": "str",
     "wms_key": "str",
-    "device_ids": ["int?"]
+    "ignored_devices": "str?",
+    "force_devices": "str?",
+    "mqtt_server": "str",
+    "mqtt_user": "str?",
+    "mqtt_password": "str?"
   },
   "uart": true,
   "usb": true,
