@@ -1,5 +1,8 @@
 const warema = require('./warema-wms-venetian-blinds');
 const mqtt = require('mqtt')
+const fs = require('fs')
+
+console.log('🚀 Starting Warema Bridge - ol-iver fork v1.0.0');
 
 originalLog = console.log;
 console.log = function () {
@@ -12,18 +15,54 @@ function getCurrentDateString() {
 };
 
 process.on('SIGINT', function() {
+    console.log('🛑 Received SIGINT, shutting down gracefully...');
+    if (client) {
+        client.publish('warema/bridge/state', 'offline', {retain: true});
+        client.end();
+    }
     process.exit(0);
 });
 
-const ignoredDevices = process.env.IGNORED_DEVICES ? process.env.IGNORED_DEVICES.split(',') : []
-const forceDevices = process.env.FORCE_DEVICES ? process.env.FORCE_DEVICES.split(',') : []
+// Function to get Home Assistant add-on options
+function getAddOnOptions() {
+    try {
+        const optionsFile = '/data/options.json';
+        if (fs.existsSync(optionsFile)) {
+            const options = JSON.parse(fs.readFileSync(optionsFile, 'utf8'));
+            console.log('📄 Using Home Assistant add-on options');
+            return options;
+        }
+    } catch (err) {
+        console.log('⚠️ Could not read add-on options:', err.message);
+    }
+    
+    console.log('📄 Using environment variables');
+    return {
+        wms_key: process.env.WMS_KEY,
+        wms_pan_id: process.env.WMS_PAN_ID,
+        wms_channel: process.env.WMS_CHANNEL,
+        wms_serial_port: process.env.WMS_SERIAL_PORT,
+        ignored_devices: process.env.IGNORED_DEVICES,
+        force_devices: process.env.FORCE_DEVICES
+    };
+}
+
+const options = getAddOnOptions();
+const ignoredDevices = options.ignored_devices ? options.ignored_devices.split(',') : []
+const forceDevices = options.force_devices ? options.force_devices.split(',') : []
 
 const settingsPar = {
-    wmsChannel   : process.env.WMS_CHANNEL     || 17,
-    wmsKey       : process.env.WMS_KEY         || '00112233445566778899AABBCCDDEEFF',
-    wmsPanid     : process.env.WMS_PAN_ID      || 'FFFF',
-    wmsSerialPort: process.env.WMS_SERIAL_PORT || '/dev/ttyUSB0',
+    wmsChannel   : options.wms_channel || process.env.WMS_CHANNEL || 17,
+    wmsKey       : options.wms_key || process.env.WMS_KEY || '00112233445566778899AABBCCDDEEFF',
+    wmsPanid     : options.wms_pan_id || process.env.WMS_PAN_ID || 'FFFF',
+    wmsSerialPort: options.wms_serial_port || process.env.WMS_SERIAL_PORT || '/dev/ttyUSB0',
   };
+
+console.log('🔧 WMS Configuration:');
+console.log('   Serial Port:', settingsPar.wmsSerialPort);
+console.log('   Channel:', settingsPar.wmsChannel);
+console.log('   PAN ID:', settingsPar.wmsPanid);
+console.log('   Key:', settingsPar.wmsKey ? 'SET' : 'NOT SET');
 
 var registered_shades = []
 var shade_position = {}
@@ -240,24 +279,22 @@ function callback(err, msg) {
 
 var stickUsb = null
 
-const client = mqtt.connect(
-  process.env.MQTT_SERVER,
-  {
-    username: process.env.MQTT_USER,
-    password: process.env.MQTT_PASSWORD,
+// Connect to MQTT broker (Home Assistant will provide credentials automatically via service)
+console.log('🔌 Connecting to MQTT broker...');
+const client = mqtt.connect('mqtt://core-mosquitto:1883', {
     will: {
-      topic: 'warema/bridge/state',
-      payload: 'offline',
-      retain: true
+        topic: 'warema/bridge/state',
+        payload: 'offline',
+        retain: true
     }
-  }
-)
+});
 
 client.on('connect', function (connack) {
-  console.log('Connected to MQTT')
+  console.log('✅ Connected to MQTT')
   client.subscribe('warema/#')
   client.subscribe('homeassistant/status')
   if (stickUsb == null) {
+    console.log('🔌 Initializing WMS USB Stick...')
     stickUsb = new warema(settingsPar.wmsSerialPort,
       settingsPar.wmsChannel,
       settingsPar.wmsPanid,
@@ -270,11 +307,11 @@ client.on('connect', function (connack) {
 })
 
 client.on('error', function (error) {
-  console.log('MQTT Error: ' + error.toString())
+  console.log('❌ MQTT Error: ' + error.toString())
 })
 
 client.on('reconnect', () => {
-  console.log('Reconnecting to MQTT');
+  console.log('🔄 MQTT client reconnecting...');
 });
 
 client.on('message', function (topic, message) {
@@ -286,25 +323,25 @@ client.on('message', function (topic, message) {
       case 'set':
         switch (message.toString()) {
           case 'CLOSE':
-            console.log('Sending CLOSE command to device: ' + device)
+            console.log('📤 Sending CLOSE command to device: ' + device)
             stickUsb.vnBlindSetPosition(device, 100, 100)
             break;
           case 'OPEN':
-            console.log('Sending OPEN command to device: ' + device)
+            console.log('📤 Sending OPEN command to device: ' + device)
             stickUsb.vnBlindSetPosition(device, 0, -100)
             break;
           case 'STOP':
-            console.log('Sending STOP command to device: ' + device)
+            console.log('📤 Sending STOP command to device: ' + device)
             stickUsb.vnBlindStop(device)
             break;
         }
         break;
       case 'set_position':
-        console.log('Sending set_position to "' + message + '" command to device:' + device)
+        console.log('📤 Sending set_position to "' + message + '" command to device:' + device)
         stickUsb.vnBlindSetPosition(device, parseInt(message), parseInt(shade_position[device]['angle']))
         break;
       case 'set_tilt':
-        console.log('Sending set_tilt to "' + message + '" command to device:' + device)
+        console.log('📤 Sending set_tilt to "' + message + '" command to device:' + device)
         stickUsb.vnBlindSetPosition(device, parseInt(shade_position[device]['position']), parseInt(message))
         break;
     }
@@ -312,11 +349,11 @@ client.on('message', function (topic, message) {
     if (topic.split('/')[1] == 'status') {
       switch (message.toString()) {
         case 'online':
-          console.log('Home Assistant is online now')
+          console.log('🏠 Home Assistant is online now')
           registerDevices()
           break;
         default:
-          console.log('Home Assistant is ' + message.toString() +' now')
+          console.log('🏠 Home Assistant is ' + message.toString() +' now')
       }
     }
   }
