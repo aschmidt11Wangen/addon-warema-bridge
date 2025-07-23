@@ -267,13 +267,13 @@ function callback(err, msg) {
           var rain_payload = {
             ...payload,
             state_topic: 'warema/' + msg.payload.weather.snr + '/rain/state',
-            device_class: 'precipitation',
+            device_class: 'moisture',
             unique_id: msg.payload.weather.snr + '_rain',
-            unit_of_measurement: 'mm',
             icon: 'mdi:weather-rainy',
-            state_class: 'total_increasing'
+            payload_on: 'true',
+            payload_off: 'false'
           }
-          client.publish('homeassistant/sensor/' + msg.payload.weather.snr + '/rain/config', JSON.stringify(rain_payload), {retain: true})
+          client.publish('homeassistant/binary_sensor/' + msg.payload.weather.snr + '/rain/config', JSON.stringify(rain_payload), {retain: true})
 
           client.publish(availability_topic, 'online', {retain: true})
           registered_shades.push(msg.payload.weather.snr)
