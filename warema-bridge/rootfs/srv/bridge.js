@@ -206,12 +206,19 @@ function callback(err, msg) {
         stickUsb.setWatchMovingBlindsInterval(1000)
         break;
       case 'wms-vb-rcv-weather-broadcast':
+        console.log('🌤️ Weather broadcast received:', JSON.stringify(msg.payload.weather, null, 2));
+        
         if (registered_shades.includes(msg.payload.weather.snr)) {
           client.publish('warema/' + msg.payload.weather.snr + '/illuminance/state', msg.payload.weather.lumen.toString(), {retain: true})
           client.publish('warema/' + msg.payload.weather.snr + '/temperature/state', msg.payload.weather.temp.toString(), {retain: true})
           client.publish('warema/' + msg.payload.weather.snr + '/wind_speed/state', msg.payload.weather.wind.toString(), {retain: true})
+          
+          // Check if rain data exists and publish it
           if (msg.payload.weather.rain !== undefined) {
+            console.log('🌧️ Publishing rain data:', msg.payload.weather.rain);
             client.publish('warema/' + msg.payload.weather.snr + '/rain/state', msg.payload.weather.rain.toString(), {retain: true})
+          } else {
+            console.log('⚠️ Rain data is undefined in weather broadcast');
           }
         } else {
           var availability_topic = 'warema/' + msg.payload.weather.snr + '/availability'
@@ -260,10 +267,11 @@ function callback(err, msg) {
           var rain_payload = {
             ...payload,
             state_topic: 'warema/' + msg.payload.weather.snr + '/rain/state',
-            device_class: 'moisture',
+            device_class: 'precipitation',
             unique_id: msg.payload.weather.snr + '_rain',
             unit_of_measurement: 'mm',
             icon: 'mdi:weather-rainy',
+            state_class: 'total_increasing'
           }
           client.publish('homeassistant/sensor/' + msg.payload.weather.snr + '/rain/config', JSON.stringify(rain_payload), {retain: true})
 
