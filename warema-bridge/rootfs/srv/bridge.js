@@ -206,8 +206,6 @@ function callback(err, msg) {
         stickUsb.setWatchMovingBlindsInterval(1000)
         break;
       case 'wms-vb-rcv-weather-broadcast':
-        console.log('🌤️ Weather broadcast received:', JSON.stringify(msg.payload.weather, null, 2));
-        
         if (registered_shades.includes(msg.payload.weather.snr)) {
           client.publish('warema/' + msg.payload.weather.snr + '/illuminance/state', msg.payload.weather.lumen.toString(), {retain: true})
           client.publish('warema/' + msg.payload.weather.snr + '/temperature/state', msg.payload.weather.temp.toString(), {retain: true})
@@ -215,10 +213,7 @@ function callback(err, msg) {
           
           // Check if rain data exists and publish it
           if (msg.payload.weather.rain !== undefined) {
-            console.log('🌧️ Publishing rain data:', msg.payload.weather.rain);
             client.publish('warema/' + msg.payload.weather.snr + '/rain/state', msg.payload.weather.rain.toString(), {retain: true})
-          } else {
-            console.log('⚠️ Rain data is undefined in weather broadcast');
           }
         } else {
           var availability_topic = 'warema/' + msg.payload.weather.snr + '/availability'
