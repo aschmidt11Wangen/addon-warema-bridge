@@ -279,9 +279,36 @@ function callback(err, msg) {
 
 var stickUsb = null
 
-// Connect to MQTT broker (Home Assistant will provide credentials automatically via service)
+// Debug: Log all environment variables related to MQTT
+console.log('🔍 Debugging MQTT environment variables:');
+const mqttEnvVars = Object.keys(process.env).filter(key => key.includes('MQTT'));
+mqttEnvVars.forEach(key => {
+    console.log(`   ${key}: ${key.includes('PASS') || key.includes('PASSWORD') ? 'SET' : process.env[key]}`);
+});
+
+// Connect to MQTT broker using Home Assistant provided credentials
 console.log('🔌 Connecting to MQTT broker...');
-const client = mqtt.connect('mqtt://core-mosquitto:1883', {
+
+// Home Assistant provides MQTT credentials via environment when mqtt:need is declared
+const mqttConfig = {
+    host: process.env.MQTT_HOST || 'core-mosquitto',
+    port: parseInt(process.env.MQTT_PORT) || 1883,
+    username: process.env.MQTT_USER || process.env.MQTT_USERNAME,
+    password: process.env.MQTT_PASS || process.env.MQTT_PASSWORD
+};
+
+console.log('🔌 MQTT Configuration:');
+console.log('   Host:', mqttConfig.host);
+console.log('   Port:', mqttConfig.port);
+console.log('   Username:', mqttConfig.username || 'NOT SET');
+console.log('   Password:', mqttConfig.password ? 'SET' : 'NOT SET');
+
+const mqttUrl = `mqtt://${mqttConfig.host}:${mqttConfig.port}`;
+
+// Try with credentials first, then without if that fails
+let client = mqtt.connect(mqttUrl, {
+    username: mqttConfig.username,
+    password: mqttConfig.password,
     will: {
         topic: 'warema/bridge/state',
         payload: 'offline',
@@ -289,72 +316,95 @@ const client = mqtt.connect('mqtt://core-mosquitto:1883', {
     }
 });
 
-client.on('connect', function (connack) {
-  console.log('✅ Connected to MQTT')
-  client.subscribe('warema/#')
-  client.subscribe('homeassistant/status')
-  if (stickUsb == null) {
-    console.log('🔌 Initializing WMS USB Stick...')
-    stickUsb = new warema(settingsPar.wmsSerialPort,
-      settingsPar.wmsChannel,
-      settingsPar.wmsPanid,
-      settingsPar.wmsKey,
-      {},
-      callback
-    );
-  }
-  client.publish('warema/bridge/state', 'online', {retain: true})
-})
-
+// Fallback: try without credentials if authentication fails
+let authFailureCount = 0;
 client.on('error', function (error) {
   console.log('❌ MQTT Error: ' + error.toString())
-})
-
-client.on('reconnect', () => {
-  console.log('🔄 MQTT client reconnecting...');
-});
-
-client.on('message', function (topic, message) {
-  var scope = topic.split('/')[0]
-  if (scope == 'warema') {
-    var device = parseInt(topic.split('/')[1])
-    var command = topic.split('/')[2]
-    switch (command) {
-      case 'set':
-        switch (message.toString()) {
-          case 'CLOSE':
-            console.log('📤 Sending CLOSE command to device: ' + device)
-            stickUsb.vnBlindSetPosition(device, 100, 100)
-            break;
-          case 'OPEN':
-            console.log('📤 Sending OPEN command to device: ' + device)
-            stickUsb.vnBlindSetPosition(device, 0, -100)
-            break;
-          case 'STOP':
-            console.log('📤 Sending STOP command to device: ' + device)
-            stickUsb.vnBlindStop(device)
-            break;
+  
+  if (error.toString().includes('Not authorized') && authFailureCount < 3) {
+    authFailureCount++;
+    console.log('🔄 Trying MQTT connection without credentials...');
+    client.end(true);
+    
+    // Retry without credentials
+    client = mqtt.connect(mqttUrl, {
+        will: {
+            topic: 'warema/bridge/state',
+            payload: 'offline',
+            retain: true
         }
-        break;
-      case 'set_position':
-        console.log('📤 Sending set_position to "' + message + '" command to device:' + device)
-        stickUsb.vnBlindSetPosition(device, parseInt(message), parseInt(shade_position[device]['angle']))
-        break;
-      case 'set_tilt':
-        console.log('📤 Sending set_tilt to "' + message + '" command to device:' + device)
-        stickUsb.vnBlindSetPosition(device, parseInt(shade_position[device]['position']), parseInt(message))
-        break;
-    }
-  } else if (scope == 'homeassistant') {
-    if (topic.split('/')[1] == 'status') {
-      switch (message.toString()) {
-        case 'online':
-          console.log('🏠 Home Assistant is online now')
-          registerDevices()
-          break;
-        default:
-          console.log('🏠 Home Assistant is ' + message.toString() +' now')
-      }
-    }
+    });
+    setupMQTTHandlers();
   }
 })
+
+function setupMQTTHandlers() {
+    client.on('connect', function (connack) {
+      console.log('✅ Connected to MQTT')
+      client.subscribe('warema/#')
+      client.subscribe('homeassistant/status')
+      if (stickUsb == null) {
+        console.log('🔌 Initializing WMS USB Stick...')
+        stickUsb = new warema(settingsPar.wmsSerialPort,
+          settingsPar.wmsChannel,
+          settingsPar.wmsPanid,
+          settingsPar.wmsKey,
+          {},
+          callback
+        );
+      }
+      client.publish('warema/bridge/state', 'online', {retain: true})
+    })
+
+    client.on('reconnect', () => {
+      console.log('🔄 MQTT client reconnecting...');
+    });
+
+    client.on('message', function (topic, message) {
+      var scope = topic.split('/')[0]
+      if (scope == 'warema') {
+        var device = parseInt(topic.split('/')[1])
+        var command = topic.split('/')[2]
+        switch (command) {
+          case 'set':
+            switch (message.toString()) {
+              case 'CLOSE':
+                console.log('📤 Sending CLOSE command to device: ' + device)
+                stickUsb.vnBlindSetPosition(device, 100, 100)
+                break;
+              case 'OPEN':
+                console.log('📤 Sending OPEN command to device: ' + device)
+                stickUsb.vnBlindSetPosition(device, 0, -100)
+                break;
+              case 'STOP':
+                console.log('📤 Sending STOP command to device: ' + device)
+                stickUsb.vnBlindStop(device)
+                break;
+            }
+            break;
+          case 'set_position':
+            console.log('📤 Sending set_position to "' + message + '" command to device:' + device)
+            stickUsb.vnBlindSetPosition(device, parseInt(message), parseInt(shade_position[device]['angle']))
+            break;
+          case 'set_tilt':
+            console.log('📤 Sending set_tilt to "' + message + '" command to device:' + device)
+            stickUsb.vnBlindSetPosition(device, parseInt(shade_position[device]['position']), parseInt(message))
+            break;
+        }
+      } else if (scope == 'homeassistant') {
+        if (topic.split('/')[1] == 'status') {
+          switch (message.toString()) {
+            case 'online':
+              console.log('🏠 Home Assistant is online now')
+              registerDevices()
+              break;
+            default:
+              console.log('🏠 Home Assistant is ' + message.toString() +' now')
+          }
+        }
+      }
+    })
+}
+
+// Setup initial handlers
+setupMQTTHandlers();
