@@ -210,6 +210,9 @@ function callback(err, msg) {
           client.publish('warema/' + msg.payload.weather.snr + '/illuminance/state', msg.payload.weather.lumen.toString(), {retain: true})
           client.publish('warema/' + msg.payload.weather.snr + '/temperature/state', msg.payload.weather.temp.toString(), {retain: true})
           client.publish('warema/' + msg.payload.weather.snr + '/wind_speed/state', msg.payload.weather.wind.toString(), {retain: true})
+          if (msg.payload.weather.rain !== undefined) {
+            client.publish('warema/' + msg.payload.weather.snr + '/rain/state', msg.payload.weather.rain.toString(), {retain: true})
+          }
         } else {
           var availability_topic = 'warema/' + msg.payload.weather.snr + '/availability'
           var payload = {
@@ -253,6 +256,16 @@ function callback(err, msg) {
             unit_of_measurement: 'm/s',
           }
           client.publish('homeassistant/sensor/' + msg.payload.weather.snr + '/wind/config', JSON.stringify(wind_payload), {retain: true})
+
+          var rain_payload = {
+            ...payload,
+            state_topic: 'warema/' + msg.payload.weather.snr + '/rain/state',
+            device_class: 'moisture',
+            unique_id: msg.payload.weather.snr + '_rain',
+            unit_of_measurement: 'mm',
+            icon: 'mdi:weather-rainy',
+          }
+          client.publish('homeassistant/sensor/' + msg.payload.weather.snr + '/rain/config', JSON.stringify(rain_payload), {retain: true})
 
           client.publish(availability_topic, 'online', {retain: true})
           registered_shades.push(msg.payload.weather.snr)
