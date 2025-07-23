@@ -278,67 +278,110 @@ function callback(err, msg) {
 }
 
 var stickUsb = null
+var client = null
+
+// Function to get MQTT credentials from Home Assistant Services API
+async function getMQTTCredentials() {
+    try {
+        console.log('🔍 Attempting to get MQTT credentials from Home Assistant Services API...');
+        
+        const http = require('http');
+        const supervisorToken = process.env.SUPERVISOR_TOKEN;
+        
+        if (!supervisorToken) {
+            console.log('⚠️ No SUPERVISOR_TOKEN found, using default MQTT connection');
+            return null;
+        }
+        
+        const options = {
+            hostname: 'supervisor',
+            port: 80,
+            path: '/services/mqtt',
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${supervisorToken}`,
+                'Content-Type': 'application/json'
+            }
+        };
+        
+        return new Promise((resolve) => {
+            const req = http.request(options, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                    try {
+                        const response = JSON.parse(data);
+                        if (response.result === 'ok' && response.data) {
+                            console.log('✅ Got MQTT credentials from Services API');
+                            return resolve({
+                                host: response.data.host || 'core-mosquitto',
+                                port: response.data.port || 1883,
+                                username: response.data.username,
+                                password: response.data.password
+                            });
+                        }
+                    } catch (e) {
+                        console.log('⚠️ Failed to parse Services API response:', e.message);
+                    }
+                    resolve(null);
+                });
+            });
+            req.on('error', (err) => {
+                console.log('⚠️ Services API request failed:', err.message);
+                resolve(null);
+            });
+            req.end();
+        });
+    } catch (error) {
+        console.log('⚠️ Error getting MQTT credentials:', error.message);
+        return null;
+    }
+}
 
 // Debug: Log all environment variables related to MQTT
 console.log('🔍 Debugging MQTT environment variables:');
 const mqttEnvVars = Object.keys(process.env).filter(key => key.includes('MQTT'));
-mqttEnvVars.forEach(key => {
-    console.log(`   ${key}: ${key.includes('PASS') || key.includes('PASSWORD') ? 'SET' : process.env[key]}`);
-});
+if (mqttEnvVars.length === 0) {
+    console.log('   No MQTT environment variables found');
+} else {
+    mqttEnvVars.forEach(key => {
+        console.log(`   ${key}: ${key.includes('PASS') || key.includes('PASSWORD') ? 'SET' : process.env[key]}`);
+    });
+}
 
-// Connect to MQTT broker using Home Assistant provided credentials
-console.log('🔌 Connecting to MQTT broker...');
-
-// Home Assistant provides MQTT credentials via environment when mqtt:need is declared
-const mqttConfig = {
-    host: process.env.MQTT_HOST || 'core-mosquitto',
-    port: parseInt(process.env.MQTT_PORT) || 1883,
-    username: process.env.MQTT_USER || process.env.MQTT_USERNAME,
-    password: process.env.MQTT_PASS || process.env.MQTT_PASSWORD
-};
-
-console.log('🔌 MQTT Configuration:');
-console.log('   Host:', mqttConfig.host);
-console.log('   Port:', mqttConfig.port);
-console.log('   Username:', mqttConfig.username || 'NOT SET');
-console.log('   Password:', mqttConfig.password ? 'SET' : 'NOT SET');
-
-const mqttUrl = `mqtt://${mqttConfig.host}:${mqttConfig.port}`;
-
-// Try with credentials first, then without if that fails
-let client = mqtt.connect(mqttUrl, {
-    username: mqttConfig.username,
-    password: mqttConfig.password,
-    will: {
-        topic: 'warema/bridge/state',
-        payload: 'offline',
-        retain: true
-    }
-});
-
-// Fallback: try without credentials if authentication fails
-let authFailureCount = 0;
-client.on('error', function (error) {
-  console.log('❌ MQTT Error: ' + error.toString())
-  
-  if (error.toString().includes('Not authorized') && authFailureCount < 3) {
-    authFailureCount++;
-    console.log('🔄 Trying MQTT connection without credentials...');
-    client.end(true);
+// Initialize MQTT connection
+async function initializeMQTT() {
+    console.log('🔌 Connecting to MQTT broker...');
     
-    // Retry without credentials
+    // Try to get MQTT credentials from Services API
+    const mqttCreds = await getMQTTCredentials();
+    
+    const mqttConfig = mqttCreds || {
+        host: 'core-mosquitto',
+        port: 1883,
+        username: 'homeassistant',  // Default HA MQTT add-on user
+        password: undefined
+    };
+
+    console.log('🔌 MQTT Configuration:');
+    console.log('   Host:', mqttConfig.host);
+    console.log('   Port:', mqttConfig.port);
+    console.log('   Username:', mqttConfig.username || 'NOT SET');
+    console.log('   Password:', mqttConfig.password ? 'SET' : 'NOT SET');
+
+    const mqttUrl = `mqtt://${mqttConfig.host}:${mqttConfig.port}`;
+
+    // Create MQTT client
     client = mqtt.connect(mqttUrl, {
+        username: mqttConfig.username,
+        password: mqttConfig.password,
         will: {
             topic: 'warema/bridge/state',
             payload: 'offline',
             retain: true
         }
     });
-    setupMQTTHandlers();
-  }
-})
 
-function setupMQTTHandlers() {
     client.on('connect', function (connack) {
       console.log('✅ Connected to MQTT')
       client.subscribe('warema/#')
@@ -354,6 +397,10 @@ function setupMQTTHandlers() {
         );
       }
       client.publish('warema/bridge/state', 'online', {retain: true})
+    })
+
+    client.on('error', function (error) {
+      console.log('❌ MQTT Error: ' + error.toString())
     })
 
     client.on('reconnect', () => {
@@ -404,7 +451,12 @@ function setupMQTTHandlers() {
         }
       }
     })
+    
+    return client;
 }
 
-// Setup initial handlers
-setupMQTTHandlers();
+// Start MQTT connection
+initializeMQTT().catch(error => {
+    console.log('❌ Failed to initialize MQTT:', error.message);
+    process.exit(1);
+});
