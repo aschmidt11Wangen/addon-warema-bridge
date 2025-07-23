@@ -122,8 +122,8 @@ function registerDevice(element) {
         tilt_command_topic: 'warema/' + snr + '/set_tilt',
         tilt_closed_value: 100,
         tilt_opened_value: -100,
-        tilt_min: 100,
-        tilt_max: -100,
+        tilt_min: -100,
+        tilt_max: 100,
       }
       break;
     case 21:
@@ -143,8 +143,8 @@ function registerDevice(element) {
         tilt_command_topic: 'warema/' + snr + '/set_tilt',
         tilt_closed_value: 100,
         tilt_opened_value: -100,
-        tilt_min: 100,
-        tilt_max: -100,
+        tilt_min: -100,
+        tilt_max: 100,
       }
       break;
     case 25:
