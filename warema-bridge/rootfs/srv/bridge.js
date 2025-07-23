@@ -255,7 +255,7 @@ function callback(err, msg) {
             unique_id: msg.payload.weather.snr + '_wind_speed',
             unit_of_measurement: 'm/s',
           }
-          client.publish('homeassistant/sensor/' + msg.payload.weather.snr + '/wind/config', JSON.stringify(wind_payload), {retain: true})
+          client.publish('homeassistant/sensor/' + msg.payload.weather.snr + '/wind_speed/config', JSON.stringify(wind_payload), {retain: true})
 
           var rain_payload = {
             ...payload,
