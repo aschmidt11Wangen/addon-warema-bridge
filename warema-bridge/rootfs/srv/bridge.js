@@ -431,11 +431,15 @@ async function initializeMQTT() {
             break;
           case 'set_position':
             console.log('📤 Sending set_position to "' + message + '" command to device:' + device)
-            stickUsb.vnBlindSetPosition(device, parseInt(message), parseInt(shade_position[device]['angle']))
+            // Ensure we have position data, use default tilt if not available
+            const currentAngle = shade_position[device] ? shade_position[device]['angle'] : 0
+            stickUsb.vnBlindSetPosition(device, parseInt(message), parseInt(currentAngle))
             break;
           case 'set_tilt':
             console.log('📤 Sending set_tilt to "' + message + '" command to device:' + device)
-            stickUsb.vnBlindSetPosition(device, parseInt(shade_position[device]['position']), parseInt(message))
+            // Ensure we have position data, use current position or default if not available
+            const currentPosition = shade_position[device] ? shade_position[device]['position'] : 50
+            stickUsb.vnBlindSetPosition(device, parseInt(currentPosition), parseInt(message))
             break;
         }
       } else if (scope == 'homeassistant') {
