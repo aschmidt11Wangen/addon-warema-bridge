@@ -66,6 +66,7 @@ console.log('   Key:', settingsPar.wmsKey ? 'SET' : 'NOT SET');
 
 var registered_shades = []
 var shade_position = {}
+var shade_state = {}
 
 function registerDevice(element) {
   snr = String(element.snr).replace(/^0+/, '')
@@ -117,6 +118,12 @@ function registerDevice(element) {
         position_closed: 100,
         command_topic: 'warema/' + snr + '/set',
         position_topic: 'warema/' + snr + '/position',
+        state_topic: 'warema/' + snr + '/state',
+        state_open: 'open',
+        state_closed: 'closed',
+        state_opening: 'opening',
+        state_closing: 'closing',
+        state_stopped: 'stopped',
         tilt_status_topic: 'warema/' + snr + '/tilt',
         set_position_topic: 'warema/' + snr + '/set_position',
         tilt_command_topic: 'warema/' + snr + '/set_tilt',
@@ -138,6 +145,12 @@ function registerDevice(element) {
         position_closed: 100,
         command_topic: 'warema/' + snr + '/set',
         position_topic: 'warema/' + snr + '/position',
+        state_topic: 'warema/' + snr + '/state',
+        state_open: 'open',
+        state_closed: 'closed',
+        state_opening: 'opening',
+        state_closing: 'closing',
+        state_stopped: 'stopped',
         tilt_status_topic: 'warema/' + snr + '/tilt',
         set_position_topic: 'warema/' + snr + '/set_position',
         tilt_command_topic: 'warema/' + snr + '/set_tilt',
@@ -159,6 +172,12 @@ function registerDevice(element) {
         position_closed: 100,
         command_topic: 'warema/' + snr + '/set',
         position_topic: 'warema/' + snr + '/position',
+        state_topic: 'warema/' + snr + '/state',
+        state_open: 'open',
+        state_closed: 'closed',
+        state_opening: 'opening',
+        state_closing: 'closing',
+        state_stopped: 'stopped',
         set_position_topic: 'warema/' + snr + '/set_position',
       }
       break;
@@ -275,12 +294,34 @@ function callback(err, msg) {
         }
         break;
       case 'wms-vb-blind-position-update':
-        client.publish('warema/' + msg.payload.snr + '/position', msg.payload.position.toString(), {retain: true})
-        client.publish('warema/' + msg.payload.snr + '/tilt', msg.payload.angle.toString(), {retain: true})
-        shade_position[msg.payload.snr] = {
-          position: msg.payload.position,
-          angle: msg.payload.angle
+        var snrKey = msg.payload.snr
+        var newPos = msg.payload.position
+        var oldPos = shade_position[snrKey] ? shade_position[snrKey].position : undefined
+        var prevState = shade_state[snrKey]
+
+        var newState
+        if (newPos === 0) {
+          newState = 'open'
+        } else if (newPos === 100) {
+          newState = 'closed'
+        } else if (oldPos === undefined || oldPos === newPos) {
+          // Position unchanged: if we were moving, mark as stopped; otherwise keep previous state
+          if (prevState === 'opening' || prevState === 'closing') {
+            newState = 'stopped'
+          } else {
+            newState = prevState || 'stopped'
+          }
+        } else {
+          // Position changed: determine direction (0=open, 100=closed)
+          newState = newPos > oldPos ? 'closing' : 'opening'
         }
+
+        shade_state[snrKey] = newState
+        shade_position[snrKey] = { position: newPos, angle: msg.payload.angle }
+
+        client.publish('warema/' + snrKey + '/position', newPos.toString(), {retain: true})
+        client.publish('warema/' + snrKey + '/tilt', msg.payload.angle.toString(), {retain: true})
+        client.publish('warema/' + snrKey + '/state', newState, {retain: true})
         break;
       case 'wms-vb-scanned-devices':
         console.log('Scanned devices.')
@@ -433,14 +474,20 @@ async function initializeMQTT() {
             switch (message.toString()) {
               case 'CLOSE':
                 console.log('📤 Sending CLOSE command to device: ' + device)
+                shade_state[device] = 'closing'
+                client.publish('warema/' + device + '/state', 'closing', {retain: true})
                 stickUsb.vnBlindSetPosition(device, 100, 100)
                 break;
               case 'OPEN':
                 console.log('📤 Sending OPEN command to device: ' + device)
+                shade_state[device] = 'opening'
+                client.publish('warema/' + device + '/state', 'opening', {retain: true})
                 stickUsb.vnBlindSetPosition(device, 0, -100)
                 break;
               case 'STOP':
                 console.log('📤 Sending STOP command to device: ' + device)
+                shade_state[device] = 'stopped'
+                client.publish('warema/' + device + '/state', 'stopped', {retain: true})
                 stickUsb.vnBlindStop(device)
                 break;
             }
@@ -449,7 +496,14 @@ async function initializeMQTT() {
             console.log('📤 Sending set_position to "' + message + '" command to device:' + device)
             // Ensure we have position data, use default tilt if not available
             const currentAngle = shade_position[device] ? shade_position[device]['angle'] : 0
-            stickUsb.vnBlindSetPosition(device, parseInt(message), parseInt(currentAngle))
+            const targetPos = parseInt(message)
+            const currentPos = shade_position[device] ? shade_position[device]['position'] : undefined
+            const movingState = (currentPos === undefined || targetPos === currentPos)
+              ? 'opening'
+              : (targetPos > currentPos ? 'closing' : 'opening')
+            shade_state[device] = movingState
+            client.publish('warema/' + device + '/state', movingState, {retain: true})
+            stickUsb.vnBlindSetPosition(device, targetPos, parseInt(currentAngle))
             break;
           case 'set_tilt':
             console.log('📤 Sending set_tilt to "' + message + '" command to device:' + device)
