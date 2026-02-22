@@ -191,8 +191,15 @@ function registerDevice(element) {
     console.log('Ignoring device ' + snr + ' (type ' + element.type + ')')
   } else {
     if (!registered_shades.includes(snr)) {
-      console.log('Adding device ' + snr + ' (type ' + element.type + ') to warema stick')
-      stickUsb.vnBlindAdd(parseInt(element.snr), element.snr.toString());
+      // Weather stations (type 6) self-broadcast their data via wms-vb-rcv-weather-broadcast.
+      // Do NOT add them to the stick's blind list - they never respond to blindGetPos and
+      // each attempt causes 6 retries × 500ms = ~3.5s of radio queue blockage per poll cycle.
+      if (parseInt(element.type) !== 6) {
+        console.log('Adding device ' + snr + ' (type ' + element.type + ') to warema stick')
+        stickUsb.vnBlindAdd(parseInt(element.snr), element.snr.toString());
+      } else {
+        console.log('Skipping vnBlindAdd for weather station ' + snr + ' (type 6) - data comes via broadcast')
+      }
       registered_shades.push(snr)
     }
     console.log('Publishing state of device ' + snr + ' (type ' + element.type + ') to Home Assistant')
@@ -221,7 +228,7 @@ function callback(err, msg) {
       case 'wms-vb-init-completion':
         console.log('Warema init completed')
         registerDevices()
-        stickUsb.setPosUpdInterval(10000);
+        stickUsb.setPosUpdInterval(2000);  // Reduced from 10000ms for faster position/state feedback
         stickUsb.setWatchMovingBlindsInterval(1000)
         break;
       case 'wms-vb-rcv-weather-broadcast':
