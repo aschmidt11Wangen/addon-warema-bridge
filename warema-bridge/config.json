@@ -1,6 +1,6 @@
 {
   "name": "Warema Bridge",
-  "version": "1.0.2-state-topic",
+  "version": "1.0.3",
   "slug": "warema-bridge",
   "description": "Control your Warema WMS system - Based on ol-iver implementation",
   "arch": ["aarch64", "amd64", "armv7"],
