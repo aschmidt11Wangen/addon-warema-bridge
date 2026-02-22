@@ -228,7 +228,7 @@ function callback(err, msg) {
       case 'wms-vb-init-completion':
         console.log('Warema init completed')
         registerDevices()
-        stickUsb.setPosUpdInterval(2000);  // Reduced from 10000ms for faster position/state feedback
+        stickUsb.setPosUpdInterval(5000);  // Library minimum is 5000ms; polls ALL blinds every 5s (fix: 2000 was silently ignored)
         stickUsb.setWatchMovingBlindsInterval(1000)
         break;
       case 'wms-vb-rcv-weather-broadcast':
