@@ -3,8 +3,7 @@ name: Build and Push Docker Image
 on:
   push:
     branches: [main]
-    paths:
-      - 'warema-bridge/**'
+  workflow_dispatch:
 
 jobs:
   build-push:
