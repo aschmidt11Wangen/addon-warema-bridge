@@ -91,7 +91,7 @@ function wmsMsgNew( cmd, snr, params ){
 		this.onEnd    = undefined;
 
 		switch( cmd ){
-			case "blindGetPos"   : this.timeout =  500; this.delayAfter = 100; this.retry = 5; break;
+			case "blindGetPos"   : this.timeout =  500; this.delayAfter = 100; this.retry = 2; break;
 			case "blindMoveToPos": this.timeout =  500; this.delayAfter = 300; this.retry = 3; break;
 			case "blindStopMove" : this.timeout =  200; this.delayAfter =   5; this.retry = 3; break;
 			case "waveRequest"   : this.timeout =  500; this.delayAfter = 300; break;

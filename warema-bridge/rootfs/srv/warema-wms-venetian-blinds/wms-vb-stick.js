@@ -816,6 +816,11 @@ class WmsVbStick {
 		// . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 		function doPosUpdInterval(){
 			log.T( "doPosUpdInterval()" );
+			// Flush stale blindGetPos from queue before enqueuing new batch
+			var flushed = privateCmdQueueRemove( stickObj, "blindGetPos", null );
+			if( flushed > 0 ){
+				log.I( "Flushed "+flushed+" stale blindGetPos from queue before new poll cycle" );
+			}
 			for( var i = 0; i < stickObj.vnBlinds.length; i++ ){
 				stickObj.vnBlindGetPosition( stickObj.vnBlinds[i].snr, { cmdConfirmation:false, callbackOnUnchangedPos:false } );
 			}
@@ -870,7 +875,7 @@ class WmsVbStick {
 
 		if( blind ){
 			blind.posRequested = new VnBlindPos( position, angle, true/*moving*/ );
-			privateCmdQueueEnqueue( stickObj, new wmsUtil.wmsMsgNew( "blindMoveToPos", blind.snr, {  pos:position, ang:angle } ), vnBlindSetPositionCompletion );
+			privateCmdQueueEnqueue( stickObj, new wmsUtil.wmsMsgNew( "blindMoveToPos", blind.snr, {  pos:position, ang:angle } ), vnBlindSetPositionCompletion, "priority" );
 			setTimeout( function() { privateCmdQueueProcess(stickObj); }, DELAY_MSG_PROC );
 		}
 		else{
@@ -957,7 +962,7 @@ class WmsVbStick {
 				// Before STOP remove allother  pending commands or blind 
 				privateCmdQueueRemove( stickObj, null/*msgType*/, blind.snr );
 				
-				privateCmdQueueEnqueue( stickObj, new wmsUtil.wmsMsgNew( "blindStopMove", blind.snr, {} ), vnBlindStopCompletion );
+				privateCmdQueueEnqueue( stickObj, new wmsUtil.wmsMsgNew( "blindStopMove", blind.snr, {} ), vnBlindStopCompletion, "priority" );
 				setTimeout( function() { privateCmdQueueProcess(stickObj); }, DELAY_MSG_PROC );
 
 				if( getPosOnStop ){
